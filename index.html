@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRISCOM NET-TECH - Interactive Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Topbar Interactive Dropdowns */
+        .notification-container, .user-profile-container {
+            position: relative;
+        }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 45px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            width: 280px;
+            z-index: 1000;
+            overflow: hidden;
+        }
+        .dropdown-menu.show {
+            display: block;
+        }
+        .dropdown-header {
+            background: #f8fafc;
+            padding: 10px 15px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #475569;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .dropdown-item {
+            padding: 10px 15px;
+            font-size: 0.8rem;
+            color: #334155;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .dropdown-item:hover {
+            background: #f8fafc;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <img src="{{ url_for('static', filename='images/priscom_logo.png') }}" alt="TeleMetrics Logo" class="brand-logo">
+                <div class="brand-text">
+                    <h2>PRISCOM NET-TECH</h2>
+                    <span>PulseComm TeleMetrics</span>
+                </div>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="#" class="nav-item active" data-view="dashboard"><i class="fa-solid fa-house"></i> Dashboard</a>
+                <a href="#" class="nav-item" data-view="acceptance"><i class="fa-solid fa-circle-check"></i> Acceptance Testing <i class="fa-solid fa-chevron-down arrow"></i></a>
+                <a href="#" class="nav-item" data-view="maintenance"><i class="fa-solid fa-wrench"></i> Maintenance Queue <i class="fa-solid fa-chevron-down arrow"></i></a>
+                <a href="#" class="nav-item" data-view="telemetry"><i class="fa-solid fa-chart-line"></i> Telemetry & Metrics <i class="fa-solid fa-chevron-down arrow"></i></a>
+                <a href="#" class="nav-item" data-view="logs"><i class="fa-solid fa-file-lines"></i> System Logs <i class="fa-solid fa-chevron-down arrow"></i></a>
+                <a href="#" class="nav-item" data-view="exchange"><i class="fa-solid fa-server"></i> Exchange Config <i class="fa-solid fa-chevron-down arrow"></i></a>
+                <a href="#" class="nav-item" data-view="settings"><i class="fa-solid fa-gear"></i> System Settings <i class="fa-solid fa-chevron-down arrow"></i></a>
+            </nav>
+
+            <!-- Dynamic Exchange Status Panel -->
+            <div class="exchange-status-panel">
+                <h4>EXCHANGE STATUS</h4>
+                <ul>
+                    <li>
+                        <span class="dot green" id="dot-asterisk"></span> 
+                        Asterisk PBX 
+                        <span class="badge-text green" id="badge-asterisk">ONLINE</span>
+                    </li>
+                    <li>
+                        <span class="dot green" id="dot-sip"></span> 
+                        SIP Trunks 
+                        <span class="badge-text green" id="badge-sip">ONLINE</span>
+                    </li>
+                    <li>
+                        <span class="dot green" id="dot-isdn"></span> 
+                        ISDN Trunks 
+                        <span class="badge-text green" id="badge-isdn">ACTIVE</span>
+                    </li>
+                    <li>
+                        <span class="dot green" id="dot-pstn"></span> 
+                        PSTN Line 
+                        <span class="badge-text green" id="badge-pstn">ACTIVE</span>
+                    </li>
+                    <li>
+                        <span class="dot green" id="dot-gateway"></span> 
+                        Gateway Node 
+                        <span class="badge-text green" id="badge-gateway">NORMAL</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="sidebar-footer">
+                <p>&copy; 2026 PRISCOM NET-TECH<br>All rights reserved.</p>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <header class="top-bar">
+                <button class="menu-toggle" id="refreshBtn" title="Refresh Live Data"><i class="fa-solid fa-rotate-right"></i></button>
+                <div class="top-right">
+                    <button class="action-btn blue" id="openTestModalBtn"><i class="fa-solid fa-plus"></i> Run Test</button>
+                    <button class="action-btn orange" id="openTicketModalBtn"><i class="fa-solid fa-triangle-exclamation"></i> Log Ticket</button>
+
+                    <!-- Dynamic Notification Bell & Dropdown -->
+                    <div class="notification-container">
+                        <div class="notification-icon" id="notifBellBtn" style="cursor: pointer;">
+                            <i class="fa-regular fa-bell"></i>
+                            <span class="notif-badge" id="notifBadge">2</span>
+                        </div>
+                        <div class="dropdown-menu" id="notifDropdown">
+                            <div class="dropdown-header">SYSTEM ALERTS</div>
+                            <div class="dropdown-item">
+                                <i class="fa-solid fa-triangle-exclamation orange-text"></i>
+                                <div><strong>AT-0004 Voltage Drift</strong><br><small>Entebbe ATA voltage at 38.6V</small></div>
+                            </div>
+                            <div class="dropdown-item">
+                                <i class="fa-solid fa-circle-check green-text"></i>
+                                <div><strong>Asterisk PBX Synced</strong><br><small>24 VoIP extensions registered</small></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Admin Profile & Dropdown -->
+                    <div class="user-profile-container">
+                        <div class="user-profile" id="userProfileBtn" style="cursor: pointer;">
+                            <div class="avatar"><i class="fa-solid fa-user"></i></div>
+                            <span class="user-name" id="currentUserName">Admin</span>
+                        </div>
+                        <div class="dropdown-menu" id="userDropdown">
+                            <div class="dropdown-header">LOGGED IN AS ADMIN</div>
+                            <div class="dropdown-item" id="switchRoleItem">
+                                <i class="fa-solid fa-user-gear"></i> System Administrator
+                            </div>
+                            <div class="dropdown-item">
+                                <i class="fa-solid fa-shield-halved"></i> Active Session: Secure
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="dashboard-body" id="viewContainer">
+                <!-- 1. Main Dashboard View -->
+                <div class="view-panel active" id="view-dashboard">
+                    <div class="welcome-header">
+                        <div>
+                            <h1>Welcome back, <span class="highlight" id="welcomeAdminName">Admin</span></h1>
+                            <p>Here's what's happening with your network today.</p>
+                        </div>
+                        <!-- Live Real-Time Clock -->
+                        <div class="date-display"><span id="currentDate">-- --- ---- | --:--:-- --</span></div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="card-icon blue-bg"><i class="fa-solid fa-server"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">EXCHANGE</span>
+                                <h3 class="green-text" id="stat-exchange">ONLINE</h3>
+                                <small>Asterisk / FreePBX</small>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="card-icon green-bg"><i class="fa-solid fa-phone-flip"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">PSTN</span>
+                                <h3 class="green-text" id="stat-pstn">ACTIVE</h3>
+                                <small>1 Trunk(s)</small>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="card-icon orange-bg"><i class="fa-solid fa-users-nodes"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">ISDN (BRI/PRI)</span>
+                                <h3 class="green-text" id="stat-isdn">ACTIVE</h3>
+                                <small>2 Trunk(s)</small>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="card-icon purple-bg"><i class="fa-solid fa-headset"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">VoIP</span>
+                                <h3 class="green-text" id="stat-voip">ONLINE</h3>
+                                <small>24 Registered</small>
+                            </div>
+                        </div>
+
+                        <div class="metric-card simple">
+                            <div class="card-icon blue-text-bg"><i class="fa-solid fa-phone-volume"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">ACTIVE TERMINALS</span>
+                                <h2 id="stat-terminals">24</h2>
+                                <a href="#" class="card-link">View all terminals &rarr;</a>
+                            </div>
+                        </div>
+
+                        <div class="metric-card simple">
+                            <div class="card-icon green-text-bg"><i class="fa-solid fa-clipboard-check"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">ACCEPTANCE TESTS</span>
+                                <h2 id="stat-tests">0</h2>
+                                <a href="#" class="card-link nav-switch" data-target="acceptance">View all tests &rarr;</a>
+                            </div>
+                        </div>
+
+                        <div class="metric-card simple">
+                            <div class="card-icon orange-text-bg"><i class="fa-solid fa-wrench"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">OPEN TICKETS</span>
+                                <h2 id="stat-tickets">0</h2>
+                                <a href="#" class="card-link nav-switch" data-target="maintenance">View all tickets &rarr;</a>
+                            </div>
+                        </div>
+
+                        <div class="metric-card simple">
+                            <div class="card-icon purple-text-bg"><i class="fa-solid fa-shield-halved"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">OVERALL STATUS</span>
+                                <h2 class="green-text" id="stat-overall">PASS</h2>
+                                <small>All systems normal</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Grid -->
+                    <div class="charts-grid">
+                        <div class="chart-card wide">
+                            <div class="chart-header">
+                                <h3>MEASUREMENT TRENDS</h3>
+                                <select class="dropdown-select" id="chartRange">
+                                    <option value="7">Last 7 Days</option>
+                                    <option value="30">Last 30 Days</option>
+                                </select>
+                            </div>
+                            <div class="chart-container"><canvas id="trendsChart"></canvas></div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header"><h3>ACCEPTANCE TEST RESULTS</h3></div>
+                            <div class="doughnut-container"><canvas id="acceptanceChart"></canvas></div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header"><h3>OPEN TICKETS OVERVIEW</h3></div>
+                            <div class="doughnut-container"><canvas id="ticketsChart"></canvas></div>
+                        </div>
+                    </div>
+
+                    <!-- Tables Grid -->
+                    <div class="tables-grid">
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3>RECENT ACCEPTANCE TESTS</h3>
+                                <a href="#" class="view-all nav-switch" data-target="acceptance">View all</a>
+                            </div>
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Test ID</th>
+                                            <th>Site</th>
+                                            <th>Equipment</th>
+                                            <th>Date</th>
+                                            <th>Voltage</th>
+                                            <th>Current</th>
+                                            <th>Attenuation</th>
+                                            <th>Result</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="acceptanceTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3>RECENT MAINTENANCE TICKETS</h3>
+                                <a href="#" class="view-all nav-switch" data-target="maintenance">View all</a>
+                            </div>
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Ticket ID</th>
+                                            <th>Equipment</th>
+                                            <th>Fault</th>
+                                            <th>Severity</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="ticketsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Acceptance Testing View -->
+                <div class="view-panel" id="view-acceptance">
+                    <div class="welcome-header">
+                        <div>
+                            <h1>Acceptance Testing Logs</h1>
+                            <p>Physical layer verification history and telemetry metrics.</p>
+                        </div>
+                        <button class="action-btn blue" id="btnRunTestFromView"><i class="fa-solid fa-plus"></i> Run New Test</button>
+                    </div>
+                    <div class="table-card" style="flex:1; margin-top: 10px;">
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Test ID</th>
+                                        <th>Site</th>
+                                        <th>Equipment</th>
+                                        <th>Timestamp</th>
+                                        <th>Voltage (V)</th>
+                                        <th>Current (mA)</th>
+                                        <th>Attenuation (dB)</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fullAcceptanceTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Maintenance View -->
+                <div class="view-panel" id="view-maintenance">
+                    <div class="welcome-header">
+                        <div>
+                            <h1>Maintenance Tickets & Queue</h1>
+                            <p>Manage open issues, loop drifts, and hardware maintenance status.</p>
+                        </div>
+                        <button class="action-btn orange" id="btnLogTicketFromView"><i class="fa-solid fa-triangle-exclamation"></i> Log Ticket</button>
+                    </div>
+                    <div class="table-card" style="flex:1; margin-top: 10px;">
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Ticket ID</th>
+                                        <th>Equipment</th>
+                                        <th>Fault Description</th>
+                                        <th>Severity</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="fullTicketsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Telemetry & Metrics View -->
+                <div class="view-panel" id="view-telemetry">
+                    <div class="welcome-header">
+                        <div>
+                            <h1>Live Telemetry & Signals</h1>
+                            <p>Real-time line voltage, loop current, and attenuation parameters.</p>
+                        </div>
+                    </div>
+                    <div class="chart-card" style="flex:1;">
+                        <div class="chart-header"><h3>LINE SIGNAL SPECTRUM</h3></div>
+                        <div class="chart-container"><canvas id="telemetryChart"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- 5. System Logs View -->
+                <div class="view-panel" id="view-logs">
+                    <div class="welcome-header">
+                        <div>
+                            <h1>System Audit Logs</h1>
+                            <p>Automated events, trunk state changes, and event history.</p>
+                        </div>
+                    </div>
+                    <div class="table-card" style="flex:1;">
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Module</th>
+                                        <th>Severity</th>
+                                        <th>Message</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>28 Aug 2026 10:15:02</td><td>SIP_GATEWAY</td><td>INFO</td><td>Registration renewed for 24 VoIP extensions</td></tr>
+                                    <tr><td>28 Aug 2026 09:30:14</td><td>ISDN_PRI</td><td>INFO</td><td>Handover handshake successful on Trunk #1</td></tr>
+                                    <tr><td>28 Aug 2026 08:05:40</td><td>ACCEPTANCE</td><td>WARN</td><td>Voltage drop detected on Entebbe Branch ATA (38.6V)</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Exchange Config View -->
+                <div class="view-panel" id="view-exchange">
+                    <div class="welcome-header">
+                        <div>
+                            <h1>Exchange Configuration</h1>
+                            <p>Trunk routing rules, Asterisk PBX parameters, and gateway mappings.</p>
+                        </div>
+                    </div>
+
+                    <div class="metrics-grid" style="margin-top: 10px;">
+                        <div class="metric-card">
+                            <div class="card-icon blue-bg"><i class="fa-solid fa-network-wired"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">SIP TRUNKS</span>
+                                <h3 class="green-text">2 Active</h3>
+                                <small>Provider: TeleCom Uganda</small>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="card-icon green-bg"><i class="fa-solid fa-bolt"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">ISDN PRI/BRI</span>
+                                <h3 class="green-text">E1 / 30 Ch</h3>
+                                <small>Sync: Normal</small>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="card-icon orange-bg"><i class="fa-solid fa-phone"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">PSTN FXO/FXS</span>
+                                <h3 class="green-text">4 Lines</h3>
+                                <small>FXO Port 1-4</small>
+                            </div>
+                        </div>
+
+                        <div class="metric-card">
+                            <div class="card-icon purple-bg"><i class="fa-solid fa-headset"></i></div>
+                            <div class="card-info">
+                                <span class="card-title">EXTENSIONS</span>
+                                <h3>24 Assigned</h3>
+                                <small>SIP Codec: g729/ulaw</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tables-grid" style="flex:1; margin-top: 10px;">
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3>ACTIVE TRUNK ROUTING RULES</h3>
+                            </div>
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Trunk ID</th>
+                                            <th>Type</th>
+                                            <th>Host / IP</th>
+                                            <th>Codec</th>
+                                            <th>Max Calls</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td class="link-id">TRK-SIP-01</td>
+                                            <td>SIP / UDP</td>
+                                            <td>192.168.10.250</td>
+                                            <td>G.711u / G.729</td>
+                                            <td>60</td>
+                                            <td><span class="status-pill pass">ONLINE</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="link-id">TRK-ISDN-01</td>
+                                            <td>ISDN PRI (E1)</td>
+                                            <td>Hardware Board 0</td>
+                                            <td>PCM / HDB3</td>
+                                            <td>30</td>
+                                            <td><span class="status-pill pass">ACTIVE</span></td>
+                                        </tr>
+                                        <tr>
+                                            <td class="link-id">TRK-PSTN-01</td>
+                                            <td>Analog FXO</td>
+                                            <td>Gateway Slot 1</td>
+                                            <td>Analog Line</td>
+                                            <td>4</td>
+                                            <td><span class="status-pill pass">ACTIVE</span></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="table-card">
+                            <div class="table-header">
+                                <h3>GATEWAY ENGINE PARAMETERS</h3>
+                            </div>
+                            <div class="table-wrapper">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Parameter</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>Asterisk Core Engine</td><td>v20.4.0 LTS</td></tr>
+                                        <tr><td>SIP Port</td><td>5060 (UDP/TCP)</td></tr>
+                                        <tr><td>RTP Port Range</td><td>10000 - 20000</td></tr>
+                                        <tr><td>Default Outbound CID</td><td>+256 414 000 100</td></tr>
+                                        <tr><td>Echo Cancellation</td><td>Enabled (MG2)</td></tr>
+                                        <tr><td>DTMF Mode</td><td>RFC2833</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. System Settings View -->
+                <div class="view-panel" id="view-settings">
+                    <div class="welcome-header">
+                        <div>
+                            <h1>System Settings</h1>
+                            <p>Threshold limits, database parameters, and system preferences.</p>
+                        </div>
+                        <button class="action-btn blue" id="saveSettingsBtn"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+                    </div>
+
+                    <div class="tables-grid" style="margin-top: 10px; gap: 20px;">
+                        <div class="table-card" style="padding: 20px;">
+                            <div class="table-header" style="margin-bottom: 15px;">
+                                <h3>TELEMETRY ACCEPTANCE THRESHOLDS</h3>
+                            </div>
+                            <form id="settingsForm">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Min Idle Voltage (V)</label>
+                                        <input type="number" step="0.1" id="cfgMinVolt" value="42.0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Max Idle Voltage (V)</label>
+                                        <input type="number" step="0.1" id="cfgMaxVolt" value="52.0" required>
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Min Current (mA)</label>
+                                        <input type="number" step="0.1" id="cfgMinCurr" value="15.0" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Max Current (mA)</label>
+                                        <input type="number" step="0.1" id="cfgMaxCurr" value="45.0" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Max Attenuation Limit (dB)</label>
+                                    <input type="number" step="0.1" id="cfgMaxAtt" value="15.0" required>
+                                </div>
+                            </form>
+                        </div>
+
+                        <div class="table-card" style="padding: 20px;">
+                            <div class="table-header" style="margin-bottom: 15px;">
+                                <h3>SYSTEM & CONNECTIONS</h3>
+                            </div>
+                            <div class="form-group">
+                                <label>MySQL Host</label>
+                                <input type="text" value="localhost" readonly style="background: #f1f5f9; cursor: not-allowed;">
+                            </div>
+                            <div class="form-group">
+                                <label>Database Name</label>
+                                <input type="text" value="telecom_db" readonly style="background: #f1f5f9; cursor: not-allowed;">
+                            </div>
+                            <div class="form-group">
+                                <label>Asterisk Management Interface (AMI) Host</label>
+                                <input type="text" value="192.168.10.10:5038" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Auto-Log Tickets on Test Failure</label>
+                                <select id="cfgAutoTicket">
+                                    <option value="enabled" selected>Enabled (High Severity)</option>
+                                    <option value="disabled">Disabled</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="system-footer">
+                <div class="footer-status">
+                    <span><i class="fa-solid fa-server"></i> Server: 192.168.10.10</span>
+                    <span><i class="fa-solid fa-database"></i> Database: <strong class="green-text">Connected</strong></span>
+                    <span><i class="fa-solid fa-gears"></i> Asterisk: <strong class="green-text">Running</strong></span>
+                </div>
+                <div class="version">Version 1.0.0</div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Acceptance Test Modal Form -->
+    <div class="modal-overlay" id="testModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Run Acceptance Test</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="testForm">
+                <div class="form-group">
+                    <label>Site Location</label>
+                    <input type="text" id="testSite" value="Kampala Exchange" required>
+                </div>
+                <div class="form-group">
+                    <label>Equipment Under Test</label>
+                    <input type="text" id="testEquip" value="VoIP Gateway" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Voltage (V)</label>
+                        <input type="number" step="0.1" id="testVoltage" value="48.2" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Current (mA)</label>
+                        <input type="number" step="0.1" id="testCurrent" value="24.5" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Input Power Pin (mW)</label>
+                        <input type="number" step="0.1" id="testPin" value="10.0" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Output Power Pout (mW)</label>
+                        <input type="number" step="0.1" id="testPout" value="8.0" required>
+                    </div>
+                </div>
+                <button type="submit" class="submit-btn">Run & Compute Test</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Maintenance Ticket Modal Form -->
+    <div class="modal-overlay" id="ticketModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Log Maintenance Ticket</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            <form id="ticketForm">
+                <div class="form-group">
+                    <label>Equipment</label>
+                    <input type="text" id="ticketEquip" placeholder="e.g. PSTN Line 1" required>
+                </div>
+                <div class="form-group">
+                    <label>Fault Description</label>
+                    <input type="text" id="ticketFault" placeholder="e.g. Excessive noise" required>
+                </div>
+                <div class="form-group">
+                    <label>Severity Level</label>
+                    <select id="ticketSeverity">
+                        <option value="High">High</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+                <button type="submit" class="submit-btn orange">Log Ticket</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Embedded Scripts for Clock, Dropdowns, and Status Update Helper -->
+    <script>
+        // 1. Dynamic Real-Time Clock
+        function updateLiveClock() {
+            const dateElement = document.getElementById('currentDate');
+            if (!dateElement) return;
+            const now = new Date();
+            const day = String(now.getDate()).padStart(2, '0');
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const month = monthNames[now.getMonth()];
+            const year = now.getFullYear();
+            const timeStr = now.toLocaleTimeString();
+            dateElement.innerText = `${day} ${month} ${year} | ${timeStr}`;
+        }
+        setInterval(updateLiveClock, 1000);
+        updateLiveClock();
+
+        // 2. Dropdowns Handler
+        document.addEventListener('DOMContentLoaded', () => {
+            const notifBtn = document.getElementById('notifBellBtn');
+            const notifMenu = document.getElementById('notifDropdown');
+            const userBtn = document.getElementById('userProfileBtn');
+            const userMenu = document.getElementById('userDropdown');
+
+            if (notifBtn && notifMenu) {
+                notifBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    notifMenu.classList.toggle('show');
+                    if (userMenu) userMenu.classList.remove('show');
+                });
+            }
+
+            if (userBtn && userMenu) {
+                userBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userMenu.classList.toggle('show');
+                    if (notifMenu) notifMenu.classList.remove('show');
+                });
+            }
+
+            document.addEventListener('click', () => {
+                if (notifMenu) notifMenu.classList.remove('show');
+                if (userMenu) userMenu.classList.remove('show');
+            });
+        });
+
+        // 3. Dynamic Exchange Status Helper Function
+        window.updateExchangeStatus = function(serviceKey, status) {
+            // serviceKey choices: 'asterisk', 'sip', 'isdn', 'pstn', 'gateway'
+            // status choices: 'ONLINE', 'ACTIVE', 'NORMAL', 'DEGRADED', 'OFFLINE', 'WARNING'
+            const dotElement = document.getElementById(`dot-${serviceKey}`);
+            const badgeElement = document.getElementById(`badge-${serviceKey}`);
+
+            if (!dotElement || !badgeElement) return;
+
+            dotElement.className = 'dot';
+            badgeElement.className = 'badge-text';
+
+            if (status === 'ONLINE' || status === 'ACTIVE' || status === 'NORMAL') {
+                dotElement.classList.add('green');
+                badgeElement.classList.add('green');
+            } else if (status === 'DEGRADED' || status === 'WARNING') {
+                dotElement.classList.add('orange');
+                badgeElement.classList.add('orange');
+            } else {
+                dotElement.classList.add('red');
+                badgeElement.classList.add('red');
+            }
+
+            badgeElement.textContent = status;
+        };
+    </script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

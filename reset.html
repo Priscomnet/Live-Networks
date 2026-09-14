@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+     <title>Priscom - Reset Password</title>
+     <style>
+       body {
+            margin: 0; height: 100vh; display: flex; justify-content: center; align-items: center;
+            background: #050505; font-family: Arial, sans-serif;
+        }
+        .login-box {
+            width: 350px; padding: 40px; background: #111; border-radius: 15px; text-align: center;
+            box-shadow: 0 0 30px rgba(0, 120, 255, 0.35);
+        }
+        h1 { color: #168cff; margin-bottom: 2px; font-size: 25px; }
+        p { color: white; margin-bottom: 30px; font-size: 18px; }
+        input {
+            width: 90%; padding: 13px; margin: 8px; border-radius: 7px; border: 1px solid #333;
+            background: #222; color: white;
+        }
+        button {
+            width: 95%; padding: 13px; margin-top: 15px; border: none; border-radius: 7px;
+            background: #168cff; color: white; font-size: 16px; cursor: pointer;
+        }
+        .error-msg { color: #ff4d4d; margin-bottom: 15px; font-size: 14px; }
+        .success-msg { color: #16a34a; margin-bottom: 15px; font-size: 14px; }
+        .link-text { margin-top: 20px; color: #aaa; font-size: 14px; }
+        .link-text a { color: #168cff; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="login-box">
+        <h1>PRISCOM NET-TECH</h1>
+        <p>Reset Account Password</p>
+        
+        <div id="msg" class="error-msg"></div>
+       
+        <form id="resetForm">
+            <input type="text" id="username" placeholder="Enter Username" required>
+            <input type="text" id="securityAnswer" placeholder="Your Recovery Hint Answer" required>
+            <input type="password" id="newPassword" placeholder="Enter New Password" required>
+            <button type="submit">RESET PASSWORD</button>
+        </form>
+        
+        <div class="link-text">
+            Remembered your password? <a href="/login">Login here</a>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('resetForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const security_answer = document.getElementById('securityAnswer').value;
+            const new_password = document.getElementById('newPassword').value;
+            const msgDiv = document.getElementById('msg');
+
+            try {
+                const response = await fetch('/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, security_answer, new_password })
+                });
+                const data = await response.json();
+                if (response.ok && data.success) {
+                    msgDiv.className = "success-msg";
+                    msgDiv.textContent = data.message;
+                    setTimeout(() => { window.location.href = '/login'; }, 2000);
+                } else {
+                    msgDiv.className = "error-msg";
+                    msgDiv.textContent = data.message || 'Reset failed.';
+                }
+            } catch (err) {
+                msgDiv.className = "error-msg";
+                msgDiv.textContent = 'Server connection error.';
+            }
+        });
+    </script>
+</body>
+</html>
